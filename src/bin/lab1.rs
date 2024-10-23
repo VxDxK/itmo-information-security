@@ -7,6 +7,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+/// Проверка строки на удовлетворение условиям ключа - содержит неповторящиеся символы алфавита
 fn check_keyword<T>(s: &T) -> bool
 where
     T: Borrow<str>,
@@ -36,6 +37,7 @@ enum RunningMode {
     Decrypt,
 }
 
+/// Объект шифра, может использоваться как для шифрования текста с помощью ключа так и для дешифрования уже имеющегося
 #[derive(Debug)]
 struct Cipher {
     keyword: Vec<char>,
@@ -44,6 +46,7 @@ struct Cipher {
 }
 
 impl Cipher {
+    /// Конструктор пустого шифра из ключа
     fn new(keyword: String) -> Self {
         let mut words = BTreeMap::new();
         for char in keyword.chars() {
@@ -56,6 +59,7 @@ impl Cipher {
         }
     }
 
+    /// Конструктор шифра из зашифрованных данных и ключа с помощью которого проводилось шифрование
     fn from_content(content: String, keyword: String) -> Self {
         let keyword: Vec<char> = keyword.chars().collect();
         let mut words = BTreeMap::new();
@@ -89,7 +93,7 @@ impl Cipher {
     }
 
     fn decrypt(self) -> String {
-        let iterator = DecryptIterator::new(self);
+        let iterator = CipherIterator::new(self);
         let vec: Vec<char> = iterator.collect();
         vec.iter().collect()
     }
@@ -112,27 +116,28 @@ impl Write for Cipher {
     }
 }
 
-struct DecryptIterator {
-    encrypt: Cipher,
+/// Структура итератора над шифром
+struct CipherIterator {
+    cipher: Cipher,
     position: usize,
 }
 
-impl DecryptIterator {
-    pub fn new(encrypt: Cipher) -> Self {
+impl CipherIterator {
+    pub fn new(cipher: Cipher) -> Self {
         Self {
-            encrypt,
+            cipher,
             position: 0,
         }
     }
 }
 
-impl Iterator for DecryptIterator {
+impl Iterator for CipherIterator {
     type Item = char;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let current_char = self.encrypt.keyword[self.position % self.encrypt.keyword.len()];
-        let ans = self.encrypt.words[&current_char]
-            .get(self.position / self.encrypt.keyword.len())
+        let current_char = self.cipher.keyword[self.position % self.cipher.keyword.len()];
+        let ans = self.cipher.words[&current_char]
+            .get(self.position / self.cipher.keyword.len())
             .map(|x| x.to_owned());
         self.position += 1;
         ans
@@ -155,6 +160,7 @@ fn main() -> ExitCode {
         );
         return ExitCode::from(1);
     }
+    // Чтение файла
     let content = match fs::read_to_string(&args.input_file) {
         Ok(content) => content.strip_suffix("\n").unwrap_or(&content).to_string(),
         Err(e) => {
@@ -177,7 +183,7 @@ fn main() -> ExitCode {
     if write_result(&new_content, args.output_file).is_none() {
         println!("Result:\n{new_content}");
     }
-    ExitCode::from(0)
+    ExitCode::SUCCESS
 }
 
 #[cfg(test)]
