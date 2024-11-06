@@ -1,8 +1,8 @@
-use std::process::ExitCode;
-use rand::{random};
+use clap::{Parser, ValueEnum};
+use rand::random;
 use std::fs;
 use std::path::PathBuf;
-use clap::{Parser, ValueEnum};
+use std::process::ExitCode;
 
 fn u128_to_u32_be(key: u128) -> [u32; 4] {
     [
@@ -18,7 +18,9 @@ fn u128_to_u32_be(key: u128) -> [u32; 4] {
 struct Args {
     running_mode: Mode,
     input_file: PathBuf,
+    #[arg(long)]
     tea_key: Option<u128>,
+    #[arg(long)]
     cbc_iv: Option<u64>,
     output_file: Option<PathBuf>,
 }
@@ -30,15 +32,17 @@ enum Mode {
 }
 
 /// Tiny Encryption Algorithm
-struct TEA {
+struct Tea {
     key: [u32; 4],
 }
 
 /// Константа выведена из золотого сечения
 static DELTA: u32 = 0x9e3779b9;
-impl TEA {
+impl Tea {
     pub fn new(key: u128) -> Self {
-        Self { key: u128_to_u32_be(key) }
+        Self {
+            key: u128_to_u32_be(key),
+        }
     }
 
     fn encrypt_block(&self, block: u64) -> u64 {
@@ -88,13 +92,13 @@ impl TEA {
 }
 
 /// Cipher Block Chaining
-struct CBC {
+struct Cbc {
     iv: u64,
-    tea: TEA,
+    tea: Tea,
 }
 
-impl CBC {
-    fn new(iv: u64, tea: TEA) -> Self {
+impl Cbc {
+    fn new(iv: u64, tea: Tea) -> Self {
         Self { iv, tea }
     }
 
@@ -137,18 +141,24 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    if let None = args.tea_key {
+    if args.tea_key.is_none() {
         args.tea_key = Some(random());
-        println!("Key for TEA wasn't specified, generating random: '{}'", args.tea_key.unwrap());
+        println!(
+            "Key for TEA wasn't specified, generating random: '{}'",
+            args.tea_key.unwrap()
+        );
     }
 
-    if let None = args.cbc_iv {
+    if args.cbc_iv.is_none() {
         args.cbc_iv = Some(random());
-        println!("Initialization vector for CBC wasn't specified, generating random: '{}'", args.cbc_iv.unwrap());
+        println!(
+            "Initialization vector for CBC wasn't specified, generating random: '{}'",
+            args.cbc_iv.unwrap()
+        );
     }
 
-    let mut cbc = CBC::new(args.cbc_iv.unwrap(), TEA::new(args.tea_key.unwrap()));
-    let result = cbc.process_slice(&args.running_mode, &content.as_slice());
+    let mut cbc = Cbc::new(args.cbc_iv.unwrap(), Tea::new(args.tea_key.unwrap()));
+    let result = cbc.process_slice(&args.running_mode, content.as_slice());
     if let Some(output_file) = args.output_file {
         fs::write(output_file, &result).unwrap();
     } else {
@@ -159,16 +169,16 @@ fn main() -> ExitCode {
 
 #[cfg(test)]
 mod tests {
+    use crate::{Cbc, Mode, Tea};
     use rand::random;
-    use crate::{Mode, CBC, TEA};
 
     #[test]
     fn encrypt_and_decrypt() {
         let text = b"Hello my friends";
         let key: u128 = random();
         let iv: u64 = random();
-        let mut cbc0 = CBC::new(iv, TEA::new(key));
-        let mut cbc1 = CBC::new(iv, TEA::new(key));
+        let mut cbc0 = Cbc::new(iv, Tea::new(key));
+        let mut cbc1 = Cbc::new(iv, Tea::new(key));
         let encrypted = cbc0.process_slice(&Mode::Encrypt, text.as_slice());
         let decrypted = cbc1.process_slice(&Mode::Decrypt, encrypted.as_slice());
         assert_eq!(decrypted, text);

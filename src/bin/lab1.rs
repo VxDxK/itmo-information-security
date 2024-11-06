@@ -1,6 +1,6 @@
 use clap::{Parser, ValueEnum};
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
 use std::fs;
 use std::fs::File;
@@ -67,11 +67,20 @@ impl Cipher {
         for char in keyword.iter() {
             words.insert(char.to_owned(), Vec::new());
         }
-        let mut in_use = 0;
         let usize_signum = |value: usize| if value == 0 { 0usize } else { 1usize };
-        for (i, (_, v)) in words.iter_mut().enumerate() {
+
+        let mut in_use = 0;
+        let mut char_to_use = HashMap::new();
+        for (i, c) in keyword.iter().enumerate() {
             let to_use = (content.len() - in_use) / (keyword.len() - i)
                 + usize_signum((content.len() - in_use) % (keyword.len() - i));
+            println!("char: {c} to_use: {to_use}");
+            char_to_use.insert(*c, to_use);
+            in_use += to_use;
+        }
+        let mut in_use = 0;
+        for (c, v) in words.iter_mut() {
+            let to_use = char_to_use[c];
             v.extend_from_slice(&content[in_use..in_use + to_use]);
             in_use += to_use;
         }
@@ -201,6 +210,40 @@ mod tests {
         assert_eq!(encrypted, String::from("етвыиенч рраойфпсонш"));
         let decrypt = Cipher::from_content(encrypted, keyword);
         let decrypted = decrypt.decrypt();
+        assert_eq!(decrypted, initial_text);
+    }
+
+    #[test]
+    fn complex_test2() {
+        let initial_text: String = String::from("перест");
+        println!("{}", initial_text);
+        let keyword: String = String::from("шифр");
+        let mut encrypt = Cipher::new(keyword.clone());
+        let _ = encrypt.write_str(&initial_text);
+        println!("{:#?}", encrypt);
+        let encrypted = encrypt.encrypt();
+        println!("{}", encrypted);
+        let decrypt = Cipher::from_content(encrypted, keyword);
+        println!("{:#?}", decrypt);
+        let decrypted = decrypt.decrypt();
+        println!("{}", decrypted);
+        assert_eq!(decrypted, initial_text);
+    }
+
+    #[test]
+    fn complex_test3() {
+        let initial_text: String = String::from("Трус умирает каждый день, а воин ожидает свою гибель и живет каждый день, если человек ушел из жизни раньше времени, то он обретает вечное существование, но правила таковы, нельзя убивать самого себя и спровоцировать свою гибель, и поэтому в нас заложены самосохранение, интуиция и инстинкт.");
+        println!("{}", initial_text);
+        let keyword: String = String::from("шифр");
+        let mut encrypt = Cipher::new(keyword.clone());
+        let _ = encrypt.write_str(&initial_text);
+        println!("{:#?}", encrypt);
+        let encrypted = encrypt.encrypt();
+        println!("{}", encrypted);
+        let decrypt = Cipher::from_content(encrypted, keyword);
+        println!("{:#?}", decrypt);
+        let decrypted = decrypt.decrypt();
+        println!("{}", decrypted);
         assert_eq!(decrypted, initial_text);
     }
 }
