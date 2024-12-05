@@ -1,5 +1,6 @@
 use console::Term;
 
+// Регистр сдвига с обратной связью по переносу
 struct Fcsr {
     state: Vec<u8>,
     taps: Vec<usize>,
@@ -42,6 +43,7 @@ struct Cipher {
 
 impl Cipher {
     pub fn new() -> Self {
+        // Регистры по 7 варианту
         let fcsr1 = Fcsr::new(vec![1; 96], vec![96 - 1, 95 - 1, 45 - 1, 2 - 1], 96);
         let fcsr2 = Fcsr::new(vec![1; 96], vec![96 - 1, 88 - 1, 79 - 1, 2 - 1], 96);
         let fcsr3 = Fcsr::new(vec![1; 96], vec![96 - 1, 69 - 1, 17 - 1, 2 - 1], 96);
@@ -53,6 +55,7 @@ impl Cipher {
     }
 
     fn generate_gamma(&mut self) -> u32 {
+        // xor по варианту
         (self.fcsr1.next_bit() ^ self.fcsr2.next_bit() ^ self.fcsr3.next_bit()) as u32
     }
 
