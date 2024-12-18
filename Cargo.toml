@@ -8,3 +8,7 @@ edition = "2021"
 clap = { version = "4.5.8" , features = ["derive"]}
 rand = "0.8.5"
 console = "0.15"
+num-bigint = "0.4"
+encoding_rs = "0.8"
+num-integer = "0.1.46"
+num-traits = "0.2.19"
