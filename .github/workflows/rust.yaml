@@ -1,0 +1,42 @@
+name: Rust Tests with Coverage
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: setup toolchain
+        uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: stable
+
+      - name: check
+        run: |
+          cargo check --workspace --all-targets
+
+      - name: clippy
+        run: cargo clippy --all --all-features --tests -- -D warnings
+
+      - name: install cargo-llvm-cov
+        run: |
+          cargo install cargo-llvm-cov
+
+      - name: tests with coverage
+        run: |
+          cargo llvm-cov --workspace --lcov --output-path lcov.info
+
+      - name: upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: lcov.info
